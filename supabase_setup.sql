@@ -5,7 +5,7 @@ create table if not exists cards (
   type        text not null,
   title       text,
   caption     text,
-  desc        text,
+  description text,
   src         text,
   url         text,
   name        text,

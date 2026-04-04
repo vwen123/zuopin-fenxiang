@@ -436,9 +436,9 @@
 // ════════════════════════════════════════════════════════════
 //  ⚙️  CONFIGURATION — 请填入你的 Supabase 资讯
 // ════════════════════════════════════════════════════════════
-const SUPABASE_URL      = 'YOUR_SUPABASE_URL';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
-const ADMIN_PASSWORD    = 'YOUR_ADMIN_PASSWORD';   // 老师的删除密码
+const SUPABASE_URL      = 'https://qwtrriacrhzudrvhxakf.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3dHJyaWFjcmh6dWRydmh4YWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMTUzMTcsImV4cCI6MjA5MDg5MTMxN30.tuWfPI76xaxrpWV3MNkWkZGEEsd2bIF4v6FHJpeHnmU';
+const ADMIN_PASSWORD    = '5504';   // 老师的删除密码
 // ════════════════════════════════════════════════════════════
 
 const BUCKET = 'uploads';
@@ -520,7 +520,7 @@ function renderBoard(cards) {
         </div>
         <div class="card-body">
           <div class="card-title">${esc(c.title)}</div>
-          ${c.desc ? `<div class="card-subtitle">${esc(c.desc)}</div>` : ''}
+          ${c.description ? `<div class="card-subtitle">${esc(c.description)}</div>` : ''}
           <a class="open-btn" href="${esc(c.src)}" download="${esc(c.name)}">⬇ 下载 PDF</a>
         </div>
         ${delBtn}`;
@@ -537,7 +537,7 @@ function renderBoard(cards) {
         <div class="card-body">
           <div class="card-title">${esc(c.title)}</div>
           <div class="card-url">${esc(c.url)}</div>
-          ${c.desc ? `<div class="card-desc">${esc(c.desc)}</div>` : ''}
+          ${c.description ? `<div class="card-desc">${esc(c.description)}</div>` : ''}
           <a class="open-btn link-btn" href="${esc(c.url)}" target="_blank" rel="noopener">开启连结 →</a>
         </div>
         ${delBtn}`;
@@ -612,7 +612,7 @@ async function submitCard() {
       card.src   = urlData.publicUrl;
       card.name  = file.name;
       card.title = document.getElementById('pdf-title').value.trim() || file.name.replace(/\.pdf$/i,'');
-      card.desc  = document.getElementById('pdf-desc').value.trim();
+      card.description = document.getElementById('pdf-desc').value.trim();
 
     } else {
       const url   = document.getElementById('link-url').value.trim();
@@ -622,7 +622,7 @@ async function submitCard() {
       setProgress(50, '储存中…');
       card.url  = url;
       card.title= title;
-      card.desc = document.getElementById('link-desc').value.trim();
+      card.description = document.getElementById('link-desc').value.trim();
     }
 
     const { error: dbErr } = await sb.from('cards').insert([card]);
