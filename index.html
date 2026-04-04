@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>作品分享区</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Helvetica Neue", Arial, "PingFang TC", "Microsoft JhengHei", sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding-bottom: 60px;
+    }
+
+    /* ── Header ── */
+    header {
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,0.25);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    header h1 { color: #fff; font-size: 1.5rem; font-weight: 700; letter-spacing: 0.04em; }
+    header p  { color: rgba(255,255,255,0.75); font-size: 0.85rem; margin-top: 2px; }
+
+    .add-btn {
+      background: #fff;
+      color: #764ba2;
+      border: none;
+      border-radius: 50px;
+      padding: 10px 24px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .add-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.2); }
+
+    /* ── Grid ── */
+    #board {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 20px;
+      padding: 28px 32px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .card:hover { transform: translateY(-4px); box-shadow: 0 8px 28px rgba(0,0,0,0.18); }
+
+    .card-delete {
+      position: absolute;
+      top: 8px; right: 8px;
+      background: rgba(0,0,0,0.45);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 28px; height: 28px;
+      font-size: 14px;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      transition: background 0.15s;
+    }
+    .card:hover .card-delete { display: flex; }
+    .card-delete:hover { background: rgba(220,50,50,0.8); }
+
+    /* Image card */
+    .card-image img {
+      width: 100%; height: 200px;
+      object-fit: cover; display: block; cursor: zoom-in;
+    }
+    .card-image .card-caption { padding: 12px 14px; font-size: 0.88rem; color: #444; word-break: break-word; }
+
+    /* PDF card */
+    .card-pdf .pdf-icon {
+      height: 140px;
+      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 8px; color: #fff; cursor: pointer;
+    }
+    .card-pdf .pdf-icon svg { width: 48px; height: 48px; opacity: 0.95; }
+    .card-pdf .pdf-icon span { font-size: 0.75rem; opacity: 0.85; }
+    .card-pdf .card-body { padding: 14px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+    .card-pdf .card-title { font-weight: 600; font-size: 0.92rem; color: #222; word-break: break-word; }
+    .card-pdf .card-caption { font-size: 0.8rem; color: #888; }
+    .card-pdf .open-btn {
+      margin-top: auto; display: inline-block;
+      background: #ee5a24; color: #fff; text-decoration: none;
+      border-radius: 6px; padding: 7px 14px; font-size: 0.82rem; font-weight: 600;
+      text-align: center; transition: background 0.15s;
+    }
+    .card-pdf .open-btn:hover { background: #c0392b; }
+
+    /* Link card */
+    .card-link .link-thumb {
+      height: 130px;
+      background: linear-gradient(135deg, #4ecdc4, #44a08d);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .card-link .link-icon {
+      color: #fff; display: flex; flex-direction: column;
+      align-items: center; gap: 8px; font-size: 0.75rem; opacity: 0.9;
+    }
+    .card-link .link-icon svg { width: 42px; height: 42px; }
+    .card-link .card-body { padding: 14px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .card-link .card-title { font-weight: 600; font-size: 0.92rem; color: #222; word-break: break-word; }
+    .card-link .card-url { font-size: 0.75rem; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-link .card-desc { font-size: 0.82rem; color: #666; word-break: break-word; }
+    .card-link .open-btn {
+      margin-top: auto; display: inline-block;
+      background: #44a08d; color: #fff; text-decoration: none;
+      border-radius: 6px; padding: 7px 14px; font-size: 0.82rem; font-weight: 600;
+      text-align: center; transition: background 0.15s;
+    }
+    .card-link .open-btn:hover { background: #2d7a6a; }
+
+    /* Empty state */
+    #empty {
+      grid-column: 1 / -1; text-align: center;
+      padding: 80px 20px; color: rgba(255,255,255,0.7);
+    }
+    #empty svg { width: 64px; height: 64px; margin-bottom: 16px; opacity: 0.6; }
+    #empty p { font-size: 1rem; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); z-index: 500;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff; border-radius: 18px; padding: 32px;
+      width: 420px; max-width: 95vw;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      position: relative; animation: slideUp 0.25s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(30px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    .modal-close {
+      position: absolute; top: 14px; right: 16px;
+      background: none; border: none; font-size: 22px; cursor: pointer; color: #888;
+    }
+    .modal h2 { font-size: 1.2rem; color: #222; margin-bottom: 22px; }
+
+    .type-btns { display: flex; gap: 12px; margin-bottom: 24px; }
+    .type-btn {
+      flex: 1; border: 2px solid #e0e0e0; border-radius: 10px; padding: 14px 8px;
+      background: #fff; cursor: pointer; display: flex; flex-direction: column;
+      align-items: center; gap: 6px; font-size: 0.82rem; color: #555;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+    }
+    .type-btn svg { width: 28px; height: 28px; }
+    .type-btn.active, .type-btn:hover { border-color: #764ba2; background: #f5eeff; color: #764ba2; }
+
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 0.85rem; font-weight: 600; color: #444; margin-bottom: 6px; }
+    input[type="text"], input[type="url"], textarea {
+      width: 100%; border: 1.5px solid #ddd; border-radius: 8px;
+      padding: 10px 12px; font-size: 0.9rem; color: #333; outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus, textarea:focus { border-color: #764ba2; }
+    textarea { resize: vertical; min-height: 70px; }
+
+    .file-drop {
+      border: 2px dashed #ccc; border-radius: 10px; padding: 28px 16px;
+      text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+      color: #888; font-size: 0.88rem; position: relative;
+    }
+    .file-drop:hover, .file-drop.dragover { border-color: #764ba2; background: #f5eeff; color: #764ba2; }
+    .file-drop input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .file-drop svg { width: 32px; height: 32px; display: block; margin: 0 auto 8px; }
+    .file-name { margin-top: 8px; font-size: 0.8rem; color: #764ba2; font-weight: 600; word-break: break-all; }
+
+    .submit-btn {
+      width: 100%; background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff; border: none; border-radius: 10px; padding: 13px;
+      font-size: 0.95rem; font-weight: 700; cursor: pointer; margin-top: 6px;
+      transition: opacity 0.15s, transform 0.15s;
+    }
+    .submit-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* Upload progress */
+    .progress-bar {
+      width: 100%; height: 6px; background: #eee; border-radius: 3px;
+      margin-top: 10px; overflow: hidden; display: none;
+    }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); width: 0%; transition: width 0.3s; }
+
+    /* PDF overlay */
+    .pdf-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7); z-index: 600; flex-direction: column;
+    }
+    .pdf-overlay.open { display: flex; }
+    .pdf-overlay-header {
+      background: #222; color: #fff; padding: 12px 20px;
+      display: flex; align-items: center; justify-content: space-between; font-size: 0.9rem;
+    }
+    .pdf-overlay-header button { background: none; border: none; color: #fff; font-size: 1.4rem; cursor: pointer; }
+    .pdf-overlay iframe { flex: 1; border: none; }
+
+    /* Lightbox */
+    .lightbox {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.85); z-index: 600;
+      align-items: center; justify-content: center; cursor: zoom-out;
+    }
+    .lightbox.open { display: flex; }
+    .lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 0 60px rgba(0,0,0,0.5); }
+    .lightbox-close { position: absolute; top: 16px; right: 20px; color: #fff; font-size: 2rem; cursor: pointer; background: none; border: none; line-height: 1; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px);
+      background: #333; color: #fff; padding: 12px 24px; border-radius: 8px;
+      font-size: 0.9rem; z-index: 999; transition: transform 0.3s; pointer-events: none;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 600px) {
+      header { padding: 14px 16px; }
+      header h1 { font-size: 1.1rem; }
+      #board { padding: 16px; gap: 14px; }
+      .modal { padding: 24px 18px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div>
+    <h1>✨ 作品分享区</h1>
+    <p>分享你的讲义、资讯图、简报与连结</p>
+  </div>
+  <button class="add-btn" id="add-btn" onclick="openModal()" style="display:none">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+    新增作品
+  </button>
+</header>
+
+<!-- Board -->
+<div id="board">
+  <div id="empty">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+    <p>载入中…</p>
+  </div>
+</div>
+
+<!-- Add Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <h2>新增作品</h2>
+
+    <div class="type-btns">
+      <button class="type-btn active" id="btn-image" onclick="setType('image')">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 15l-5-5L5 21"/></svg>
+        图片
+      </button>
+      <button class="type-btn" id="btn-pdf" onclick="setType('pdf')">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9l-5-6H7a2 2 0 00-2 2v14a2 2 0 002 2z"/><path stroke-linecap="round" stroke-linejoin="round" d="M14 3v5a1 1 0 001 1h5"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6M9 17h4"/></svg>
+        PDF
+      </button>
+      <button class="type-btn" id="btn-link" onclick="setType('link')">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+        连结
+      </button>
+    </div>
+
+    <!-- Image form -->
+    <div id="form-image">
+      <div class="form-group">
+        <label>上传图片</label>
+        <div class="file-drop" id="img-drop">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          点击或拖曳图片到这里
+          <input type="file" id="img-file" accept="image/*" onchange="previewFile(this,'img')">
+        </div>
+        <div class="file-name" id="img-filename"></div>
+      </div>
+      <div class="form-group">
+        <label>说明（选填）</label>
+        <input type="text" id="img-caption" placeholder="输入说明文字…" />
+      </div>
+    </div>
+
+    <!-- PDF form -->
+    <div id="form-pdf" style="display:none">
+      <div class="form-group">
+        <label>上传 PDF 档案</label>
+        <div class="file-drop" id="pdf-drop">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          点击或拖曳 PDF 到这里
+          <input type="file" id="pdf-file" accept=".pdf,.PDF" onchange="previewFile(this,'pdf')">
+        </div>
+        <div class="file-name" id="pdf-filename"></div>
+      </div>
+      <div class="form-group">
+        <label>标题（选填）</label>
+        <input type="text" id="pdf-title" placeholder="输入标题…" />
+      </div>
+      <div class="form-group">
+        <label>说明（选填）</label>
+        <input type="text" id="pdf-desc" placeholder="输入说明…" />
+      </div>
+    </div>
+
+    <!-- Link form -->
+    <div id="form-link" style="display:none">
+      <div class="form-group">
+        <label>网址</label>
+        <input type="url" id="link-url" placeholder="https://…" />
+      </div>
+      <div class="form-group">
+        <label>标题</label>
+        <input type="text" id="link-title" placeholder="输入标题…" />
+      </div>
+      <div class="form-group">
+        <label>说明（选填）</label>
+        <textarea id="link-desc" placeholder="输入简短说明…"></textarea>
+      </div>
+    </div>
+
+    <div class="progress-bar" id="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    <button class="submit-btn" id="submit-btn" onclick="addCard()">新增</button>
+  </div>
+</div>
+
+<!-- PDF Overlay -->
+<div class="pdf-overlay" id="pdf-overlay">
+  <div class="pdf-overlay-header">
+    <span id="pdf-overlay-title">PDF 预览</span>
+    <button onclick="closePdfOverlay()">×</button>
+  </div>
+  <iframe id="pdf-overlay-frame" src=""></iframe>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">×</button>
+  <img id="lightbox-img" src="" alt="" />
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── Admin detection ────────────────────────────────────────────────────
+  const IS_ADMIN = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const API = '';  // relative to current origin
+
+  if (IS_ADMIN) {
+    document.getElementById('add-btn').style.display = 'flex';
+  }
+
+  // ── Toast ──────────────────────────────────────────────────────────────
+  function showToast(msg, duration = 2500) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), duration);
+  }
+
+  // ── Load & render ──────────────────────────────────────────────────────
+  async function loadAndRender() {
+    try {
+      const res = await fetch('data.json?_=' + Date.now());
+      const data = await res.json();
+      renderBoard(data.cards || []);
+    } catch (e) {
+      renderBoard([]);
+      console.error('Failed to load data.json', e);
+    }
+  }
+
+  function renderBoard(cards) {
+    const board = document.getElementById('board');
+    board.innerHTML = '';
+
+    if (cards.length === 0) {
+      board.innerHTML = `<div id="empty">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        <p>${IS_ADMIN ? '点击「新增作品」开始上传你的内容' : '暂无作品，请稍后再来。'}</p>
+      </div>`;
+      return;
+    }
+
+    cards.forEach(c => {
+      const div = document.createElement('div');
+      div.className = 'card card-' + c.type;
+
+      const delBtn = IS_ADMIN
+        ? `<button class="card-delete" onclick="deleteCard(${c.id})">×</button>`
+        : '';
+
+      if (c.type === 'image') {
+        div.innerHTML = `
+          <img src="${esc(c.src)}" alt="${esc(c.caption)}" loading="lazy"
+               onclick="openLightbox('${esc(c.src)}')">
+          ${c.caption ? `<div class="card-caption">${esc(c.caption)}</div>` : ''}
+          ${delBtn}`;
+
+      } else if (c.type === 'pdf') {
+        div.innerHTML = `
+          <div class="pdf-icon" onclick="openPdf('${esc(c.src)}','${esc(c.title)}')">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9l-5-6H7a2 2 0 00-2 2v14a2 2 0 002 2z"/><path stroke-linecap="round" stroke-linejoin="round" d="M14 3v5a1 1 0 001 1h5"/></svg>
+            <span>点击预览</span>
+          </div>
+          <div class="card-body">
+            <div class="card-title">${esc(c.title)}</div>
+            ${c.desc ? `<div class="card-caption">${esc(c.desc)}</div>` : ''}
+            <a class="open-btn" href="${esc(c.src)}" download="${esc(c.name)}">⬇ 下载 PDF</a>
+          </div>
+          ${delBtn}`;
+
+      } else {
+        div.innerHTML = `
+          <div class="link-thumb">
+            <div class="link-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+              连结
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-title">${esc(c.title)}</div>
+            <div class="card-url">${esc(c.url)}</div>
+            ${c.desc ? `<div class="card-desc">${esc(c.desc)}</div>` : ''}
+            <a class="open-btn" href="${esc(c.url)}" target="_blank" rel="noopener">开启连结 →</a>
+          </div>
+          ${delBtn}`;
+      }
+
+      board.appendChild(div);
+    });
+  }
+
+  // ── Delete ─────────────────────────────────────────────────────────────
+  async function deleteCard(id) {
+    if (!confirm('确定要删除这个作品吗？')) return;
+    const res = await fetch(`/api/card/${id}`, { method: 'DELETE' });
+    if (res.ok) { showToast('已删除'); loadAndRender(); }
+    else showToast('删除失败，请检查服务器是否运行');
+  }
+
+  // ── Modal ──────────────────────────────────────────────────────────────
+  let currentType = 'image';
+
+  function openModal() {
+    resetForm();
+    document.getElementById('modal').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('modal').classList.remove('open');
+  }
+
+  document.getElementById('modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal')) closeModal();
+  });
+
+  function setType(t) {
+    currentType = t;
+    ['image','pdf','link'].forEach(x => {
+      document.getElementById('btn-' + x).classList.toggle('active', x === t);
+      document.getElementById('form-' + x).style.display = x === t ? 'block' : 'none';
+    });
+  }
+
+  function resetForm() {
+    document.getElementById('img-filename').textContent = '';
+    document.getElementById('pdf-filename').textContent = '';
+    document.getElementById('img-caption').value = '';
+    document.getElementById('pdf-title').value = '';
+    document.getElementById('pdf-desc').value = '';
+    document.getElementById('link-url').value = '';
+    document.getElementById('link-title').value = '';
+    document.getElementById('link-desc').value = '';
+    document.getElementById('img-file').value = '';
+    document.getElementById('pdf-file').value = '';
+    document.getElementById('progress-bar').style.display = 'none';
+    document.getElementById('progress-fill').style.width = '0%';
+    document.getElementById('submit-btn').disabled = false;
+    setType('image');
+  }
+
+  function previewFile(input, kind) {
+    const file = input.files[0];
+    if (!file) return;
+    document.getElementById(kind + '-filename').textContent = '✓ ' + file.name;
+    if (kind === 'pdf' && !document.getElementById('pdf-title').value) {
+      document.getElementById('pdf-title').value = file.name.replace(/\.pdf$/i, '');
+    }
+  }
+
+  // Drag & drop
+  ['img-drop','pdf-drop'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('dragover'); });
+    el.addEventListener('dragleave', () => el.classList.remove('dragover'));
+    el.addEventListener('drop', e => {
+      e.preventDefault(); el.classList.remove('dragover');
+      const file = e.dataTransfer.files[0]; if (!file) return;
+      const inputId = id === 'img-drop' ? 'img-file' : 'pdf-file';
+      const kind    = id === 'img-drop' ? 'img' : 'pdf';
+      const dt = new DataTransfer(); dt.items.add(file);
+      document.getElementById(inputId).files = dt.files;
+      previewFile(document.getElementById(inputId), kind);
+    });
+  });
+
+  // ── Add card ───────────────────────────────────────────────────────────
+  async function addCard() {
+    const btn = document.getElementById('submit-btn');
+    const progressBar  = document.getElementById('progress-bar');
+    const progressFill = document.getElementById('progress-fill');
+
+    const fd = new FormData();
+    const id = Date.now();
+    fd.append('id', id);
+    fd.append('type', currentType);
+
+    if (currentType === 'image') {
+      const file = document.getElementById('img-file').files[0];
+      if (!file) { showToast('请选择图片'); return; }
+      fd.append('file', file);
+      fd.append('caption', document.getElementById('img-caption').value.trim());
+
+    } else if (currentType === 'pdf') {
+      const file = document.getElementById('pdf-file').files[0];
+      if (!file) { showToast('请选择 PDF 档案'); return; }
+      fd.append('file', file);
+      fd.append('title', document.getElementById('pdf-title').value.trim());
+      fd.append('desc',  document.getElementById('pdf-desc').value.trim());
+
+    } else {
+      const url   = document.getElementById('link-url').value.trim();
+      const title = document.getElementById('link-title').value.trim();
+      if (!url)   { showToast('请输入网址'); return; }
+      if (!title) { showToast('请输入标题'); return; }
+      fd.append('url',   url);
+      fd.append('title', title);
+      fd.append('desc',  document.getElementById('link-desc').value.trim());
+    }
+
+    btn.disabled = true;
+    progressBar.style.display = 'block';
+    progressFill.style.width = '30%';
+
+    try {
+      const res = await fetch('/api/card', { method: 'POST', body: fd });
+      progressFill.style.width = '100%';
+      if (res.ok) {
+        showToast('新增成功！');
+        closeModal();
+        await loadAndRender();
+      } else {
+        showToast('新增失败，请检查服务器是否运行');
+      }
+    } catch (e) {
+      showToast('无法连接到服务器，请先执行 python3 server.py');
+    }
+
+    btn.disabled = false;
+    progressBar.style.display = 'none';
+  }
+
+  // ── PDF overlay ────────────────────────────────────────────────────────
+  function openPdf(src, title) {
+    document.getElementById('pdf-overlay-title').textContent = title || 'PDF 预览';
+    document.getElementById('pdf-overlay-frame').src = src;
+    document.getElementById('pdf-overlay').classList.add('open');
+  }
+
+  function closePdfOverlay() {
+    document.getElementById('pdf-overlay').classList.remove('open');
+    document.getElementById('pdf-overlay-frame').src = '';
+  }
+
+  // ── Lightbox ───────────────────────────────────────────────────────────
+  function openLightbox(src) {
+    document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox').classList.add('open');
+  }
+
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────
+  function esc(s) {
+    if (!s) return '';
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeModal(); closePdfOverlay(); closeLightbox(); }
+  });
+
+  // ── Init ───────────────────────────────────────────────────────────────
+  loadAndRender();
+</script>
+</body>
+</html>
