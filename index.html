@@ -103,9 +103,14 @@
       animation: cardIn 0.35s ease;
     }
     @keyframes cardIn {
-      from { transform: scale(0.92); opacity: 0; }
-      to   { transform: scale(1);    opacity: 1; }
+      from { transform: scale(0.92) translateY(10px); opacity: 0; }
+      to   { transform: scale(1)    translateY(0);    opacity: 1; }
     }
+    @keyframes cardOut {
+      from { transform: scale(1);    opacity: 1; max-height: 400px; margin: 0; }
+      to   { transform: scale(0.88); opacity: 0; max-height: 0;   margin: 0; }
+    }
+    .card.removing { animation: cardOut 0.28s ease forwards; overflow: hidden; }
     .card:hover { transform: translateY(-4px); box-shadow: 0 8px 28px rgba(0,0,0,0.18); }
 
     .card-delete {
@@ -519,78 +524,100 @@ async function loadCards() {
 // ── Realtime ──────────────────────────────────────────────────
 function subscribeRealtime() {
   sb.channel('cards-channel')
-    .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'cards' },
-        () => loadCards())
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'cards' },
+        payload => insertCardEl(payload.new))
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'cards' },
+        payload => removeCardEl(payload.old.id))
     .subscribe();
+}
+
+// ── Build single card element ─────────────────────────────────
+function buildCardEl(c) {
+  const div = document.createElement('div');
+  div.className = 'card card-' + c.type;
+  div.dataset.id = c.id;
+
+  const badge = c.uploader
+    ? `<div class="uploader-badge">${esc(c.uploader)}</div>`
+    : '';
+
+  const checkbox = `<div class="card-checkbox" onclick="toggleSelect(event,${c.id},'${esc(c.src||'')}')">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+  </div>`;
+
+  const delBtn = `<button class="card-delete" onclick="deleteCard(${c.id},'${esc(c.src||'')}')">×</button>`;
+
+  if (c.type === 'image') {
+    div.innerHTML = `
+      ${checkbox}
+      <img src="${esc(c.src)}" loading="lazy" onclick="openLightbox('${esc(c.src)}')">
+      ${c.caption ? `<div class="card-caption">${esc(c.caption)}</div>` : ''}
+      ${badge}${delBtn}`;
+
+  } else if (c.type === 'pdf') {
+    div.innerHTML = `
+      ${checkbox}
+      <div class="pdf-icon" onclick="openPdf('${esc(c.src)}','${esc(c.title)}')">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9l-5-6H7a2 2 0 00-2 2v14a2 2 0 002 2z"/><path stroke-linecap="round" stroke-linejoin="round" d="M14 3v5a1 1 0 001 1h5"/></svg>
+        <span>点击预览</span>
+      </div>
+      <div class="card-body">
+        <div class="card-title">${esc(c.title)}</div>
+        ${c.description ? `<div class="card-subtitle">${esc(c.description)}</div>` : ''}
+        <a class="open-btn" href="${esc(c.src)}" download="${esc(c.name)}">⬇ 下载 PDF</a>
+      </div>
+      ${badge}${delBtn}`;
+
+  } else {
+    div.innerHTML = `
+      ${checkbox}
+      <div class="link-thumb">
+        <div class="link-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+          连结
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-title">${esc(c.title)}</div>
+        <div class="card-url">${esc(c.url)}</div>
+        ${c.description ? `<div class="card-desc">${esc(c.description)}</div>` : ''}
+        <a class="open-btn link-btn" href="${esc(c.url)}" target="_blank" rel="noopener">开启连结 →</a>
+      </div>
+      ${badge}${delBtn}`;
+  }
+  return div;
+}
+
+// ── Incremental DOM updates ───────────────────────────────────
+function insertCardEl(c) {
+  const board = document.getElementById('board');
+  const empty = document.getElementById('empty');
+  if (empty) empty.remove();
+  board.insertBefore(buildCardEl(c), board.firstChild);
+}
+
+function removeCardEl(id) {
+  const card = document.querySelector(`.card[data-id="${id}"]`);
+  if (!card) return;
+  selected.delete(Number(id));
+  updateBulkBar();
+  card.classList.add('removing');
+  setTimeout(() => {
+    card.remove();
+    if (!document.querySelector('.card[data-id]'))
+      showEmpty('还没有作品，点击「上传作品」开始吧！');
+  }, 290);
 }
 
 // ── Render ────────────────────────────────────────────────────
 function renderBoard(cards) {
   const board = document.getElementById('board');
   board.innerHTML = '';
-
   if (cards.length === 0) {
     showEmpty('还没有作品，点击「上传作品」开始吧！');
     return;
   }
-
-  cards.forEach(c => {
-    const div = document.createElement('div');
-    div.className = 'card card-' + c.type;
-    div.dataset.id = c.id;
-
-    const badge = c.uploader
-      ? `<div class="uploader-badge">${esc(c.uploader)}</div>`
-      : '';
-
-    const checkbox = `<div class="card-checkbox" onclick="toggleSelect(event,${c.id},'${esc(c.src||'')}')">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-    </div>`;
-
-    const delBtn = `<button class="card-delete" onclick="deleteCard(${c.id}, '${esc(c.src || '')}')">×</button>`;
-
-    if (c.type === 'image') {
-      div.innerHTML = `
-        ${checkbox}
-        <img src="${esc(c.src)}" loading="lazy" onclick="openLightbox('${esc(c.src)}')">
-        ${c.caption ? `<div class="card-caption">${esc(c.caption)}</div>` : ''}
-        ${badge}${delBtn}`;
-
-    } else if (c.type === 'pdf') {
-      div.innerHTML = `
-        ${checkbox}
-        <div class="pdf-icon" onclick="openPdf('${esc(c.src)}','${esc(c.title)}')">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9l-5-6H7a2 2 0 00-2 2v14a2 2 0 002 2z"/><path stroke-linecap="round" stroke-linejoin="round" d="M14 3v5a1 1 0 001 1h5"/></svg>
-          <span>点击预览</span>
-        </div>
-        <div class="card-body">
-          <div class="card-title">${esc(c.title)}</div>
-          ${c.description ? `<div class="card-subtitle">${esc(c.description)}</div>` : ''}
-          <a class="open-btn" href="${esc(c.src)}" download="${esc(c.name)}">⬇ 下载 PDF</a>
-        </div>
-        ${badge}${delBtn}`;
-
-    } else {
-      div.innerHTML = `
-        ${checkbox}
-        <div class="link-thumb">
-          <div class="link-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-            连结
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="card-title">${esc(c.title)}</div>
-          <div class="card-url">${esc(c.url)}</div>
-          ${c.description ? `<div class="card-desc">${esc(c.description)}</div>` : ''}
-          <a class="open-btn link-btn" href="${esc(c.url)}" target="_blank" rel="noopener">开启连结 →</a>
-        </div>
-        ${badge}${delBtn}`;
-    }
-
-    board.appendChild(div);
-  });
+  cards.forEach(c => board.appendChild(buildCardEl(c)));
 }
 
 function showEmpty(msg) {
