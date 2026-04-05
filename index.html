@@ -119,6 +119,40 @@
     .admin-mode .card:hover .card-delete { display: flex; }
     .card-delete:hover { background: rgba(220,50,50,0.8); }
 
+    /* ── Checkbox select ── */
+    .card-checkbox {
+      position: absolute; top: 8px; left: 8px;
+      width: 22px; height: 22px; border-radius: 6px;
+      border: 2px solid #fff; background: rgba(0,0,0,0.35);
+      cursor: pointer; display: none; z-index: 11;
+      align-items: center; justify-content: center;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .admin-mode .card-checkbox { display: flex; }
+    .card-checkbox svg { width: 13px; height: 13px; stroke: #fff; display: none; }
+    .card.selected .card-checkbox { background: #764ba2; border-color: #764ba2; }
+    .card.selected .card-checkbox svg { display: block; }
+    .card.selected { box-shadow: 0 0 0 3px #764ba2, 0 4px 20px rgba(0,0,0,0.12); }
+
+    /* ── Bulk action bar ── */
+    #bulk-bar {
+      display: none; position: sticky; top: 73px; z-index: 99;
+      background: #1a1a2e; color: #fff;
+      padding: 12px 32px; align-items: center; gap: 14px;
+      font-size: 0.9rem;
+    }
+    #bulk-bar.show { display: flex; }
+    #bulk-count { font-weight: 700; color: #a78bfa; min-width: 60px; }
+    .bulk-btn {
+      border: none; border-radius: 8px; padding: 8px 18px;
+      font-size: 0.85rem; font-weight: 600; cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .bulk-btn:hover { opacity: 0.85; }
+    .bulk-btn-del  { background: #e74c3c; color: #fff; }
+    .bulk-btn-all  { background: rgba(255,255,255,0.12); color: #fff; }
+    .bulk-btn-none { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); }
+
     /* Uploader badge */
     .uploader-badge {
       position: absolute; top: 8px; left: 8px;
@@ -301,6 +335,14 @@
     </button>
   </div>
 </header>
+
+<!-- Bulk action bar -->
+<div id="bulk-bar">
+  <span id="bulk-count">0 项</span>
+  <button class="bulk-btn bulk-btn-del" onclick="bulkDelete()">🗑 删除选取</button>
+  <button class="bulk-btn bulk-btn-all" onclick="selectAll()">全选</button>
+  <button class="bulk-btn bulk-btn-none" onclick="deselectAll()">取消选取</button>
+</div>
 
 <!-- Board -->
 <div id="board">
@@ -502,18 +544,22 @@ function renderBoard(cards) {
       ? `<div class="uploader-badge">${esc(c.uploader)}</div>`
       : '';
 
+    const checkbox = `<div class="card-checkbox" onclick="toggleSelect(event,${c.id},'${esc(c.src||'')}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>`;
+
     const delBtn = `<button class="card-delete" onclick="deleteCard(${c.id}, '${esc(c.src || '')}')">×</button>`;
 
     if (c.type === 'image') {
       div.innerHTML = `
-        ${badge}
+        ${checkbox}
         <img src="${esc(c.src)}" loading="lazy" onclick="openLightbox('${esc(c.src)}')">
         ${c.caption ? `<div class="card-caption">${esc(c.caption)}</div>` : ''}
-        ${delBtn}`;
+        ${badge}${delBtn}`;
 
     } else if (c.type === 'pdf') {
       div.innerHTML = `
-        ${badge}
+        ${checkbox}
         <div class="pdf-icon" onclick="openPdf('${esc(c.src)}','${esc(c.title)}')">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9l-5-6H7a2 2 0 00-2 2v14a2 2 0 002 2z"/><path stroke-linecap="round" stroke-linejoin="round" d="M14 3v5a1 1 0 001 1h5"/></svg>
           <span>点击预览</span>
@@ -523,11 +569,11 @@ function renderBoard(cards) {
           ${c.description ? `<div class="card-subtitle">${esc(c.description)}</div>` : ''}
           <a class="open-btn" href="${esc(c.src)}" download="${esc(c.name)}">⬇ 下载 PDF</a>
         </div>
-        ${delBtn}`;
+        ${badge}${delBtn}`;
 
     } else {
       div.innerHTML = `
-        ${badge}
+        ${checkbox}
         <div class="link-thumb">
           <div class="link-icon">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
@@ -540,7 +586,7 @@ function renderBoard(cards) {
           ${c.description ? `<div class="card-desc">${esc(c.description)}</div>` : ''}
           <a class="open-btn link-btn" href="${esc(c.url)}" target="_blank" rel="noopener">开启连结 →</a>
         </div>
-        ${delBtn}`;
+        ${badge}${delBtn}`;
     }
 
     board.appendChild(div);
@@ -643,26 +689,87 @@ async function submitCard() {
   }
 }
 
+// ── Selection ─────────────────────────────────────────────────
+const selected = new Map(); // id → src
+
+function toggleSelect(e, id, src) {
+  e.stopPropagation();
+  const card = document.querySelector(`.card[data-id="${id}"]`);
+  if (!card) return;
+  if (selected.has(id)) {
+    selected.delete(id);
+    card.classList.remove('selected');
+  } else {
+    selected.set(id, src);
+    card.classList.add('selected');
+  }
+  updateBulkBar();
+}
+
+function selectAll() {
+  document.querySelectorAll('.card[data-id]').forEach(card => {
+    const id = Number(card.dataset.id);
+    const src = card.querySelector('img')?.src || card.querySelector('a.open-btn')?.href || '';
+    selected.set(id, src);
+    card.classList.add('selected');
+  });
+  updateBulkBar();
+}
+
+function deselectAll() {
+  selected.clear();
+  document.querySelectorAll('.card.selected').forEach(c => c.classList.remove('selected'));
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulk-bar');
+  const count = selected.size;
+  if (isAdmin && count > 0) {
+    bar.classList.add('show');
+    document.getElementById('bulk-count').textContent = `已选 ${count} 项`;
+  } else {
+    bar.classList.remove('show');
+  }
+}
+
 // ── Delete ────────────────────────────────────────────────────
 async function deleteCard(id, src) {
   if (!isAdmin) return;
   if (!confirm('确定要删除这个作品吗？')) return;
+  await doDelete([[id, src]]);
+}
 
-  // Delete file from storage if it's in our bucket
-  if (src && src.includes('/storage/v1/object/public/uploads/')) {
-    const path = src.split('/storage/v1/object/public/uploads/')[1];
-    await sb.storage.from(BUCKET).remove([path]);
+async function bulkDelete() {
+  if (!isAdmin || selected.size === 0) return;
+  if (!confirm(`确定要删除选取的 ${selected.size} 个作品吗？此操作无法还原。`)) return;
+  const items = [...selected.entries()];
+  deselectAll();
+  await doDelete(items);
+}
+
+async function doDelete(items) {
+  // Remove files from storage
+  const storagePaths = items
+    .map(([, src]) => src)
+    .filter(src => src && src.includes('/storage/v1/object/public/uploads/'))
+    .map(src => src.split('/storage/v1/object/public/uploads/')[1]);
+
+  if (storagePaths.length > 0) {
+    await sb.storage.from(BUCKET).remove(storagePaths);
   }
 
-  const { error } = await sb.from('cards').delete().eq('id', id);
+  const ids = items.map(([id]) => id);
+  const { error } = await sb.from('cards').delete().in('id', ids);
   if (error) showToast('删除失败：' + error.message);
-  else showToast('已删除');
+  else showToast(`已删除 ${ids.length} 个作品`);
 }
 
 // ── Admin ─────────────────────────────────────────────────────
 function toggleAdmin() {
   if (isAdmin) {
     isAdmin = false;
+    deselectAll();
     document.body.classList.remove('admin-mode');
     document.getElementById('admin-toggle').classList.remove('active');
     document.getElementById('admin-toggle').textContent = '🔒 管理员';
